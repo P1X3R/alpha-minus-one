@@ -108,6 +108,51 @@ async def collect_game_data(
     return data
 
 
+def vectorize_fen(fen: str) -> torch.Tensor:
+    result = np.zeros((12, 8, 8))
+    rank = BOARD_LENGTH - 1
+    file = 0
+
+    for char in fen[: fen.find(" ")]:
+        if char == "/":
+            rank -= 1
+            file = 0
+            continue
+        elif char.isdigit():
+            file += int(char)
+            continue
+
+        match char:
+            case "P":
+                result[0][rank][file] = 1
+            case "N":
+                result[1][rank][file] = 1
+            case "B":
+                result[2][rank][file] = 1
+            case "R":
+                result[3][rank][file] = 1
+            case "Q":
+                result[4][rank][file] = 1
+            case "K":
+                result[5][rank][file] = 1
+            case "p":
+                result[6][rank][file] = 1
+            case "n":
+                result[7][rank][file] = 1
+            case "b":
+                result[8][rank][file] = 1
+            case "r":
+                result[9][rank][file] = 1
+            case "q":
+                result[10][rank][file] = 1
+            case "k":
+                result[11][rank][file] = 1
+
+        file += 1
+
+    return torch.tensor(result)
+
+
 def main() -> None:
     print("Playing game:")
     _ = asyncio.run(collect_game_data())
