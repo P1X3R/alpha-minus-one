@@ -4,7 +4,8 @@ import torch.nn.functional as F
 
 BOARD_LENGTH = 8
 BOARD_VECTOR_DEPTH = 12
-POLICY_OUTPUT_SIZE = 4672  # 8x8 board × 73 possible moves per square
+MOVES_PER_SQUARE = 73
+POLICY_OUTPUT_SIZE = BOARD_LENGTH * BOARD_LENGTH * MOVES_PER_SQUARE  # = 4672
 
 
 class Alpha(nn.Module):
@@ -23,13 +24,13 @@ class Alpha(nn.Module):
         self.bn4 = nn.BatchNorm2d(256)
 
         # Policy head: predicts a 73-channel move distribution for each square
-        self.policy_conv = nn.Conv2d(256, 73, kernel_size=1)
-        self.policy_bn = nn.BatchNorm2d(73)
+        self.policy_conv = nn.Conv2d(256, MOVES_PER_SQUARE, kernel_size=1)
+        self.policy_bn = nn.BatchNorm2d(MOVES_PER_SQUARE)
 
         # Value head: evaluates board position as a scalar in [-1, 1]
         self.value_conv = nn.Conv2d(256, 1, kernel_size=1)
         self.value_bn = nn.BatchNorm2d(1)
-        self.value_fc1 = nn.Linear(1 * 8 * 8, 256)
+        self.value_fc1 = nn.Linear(BOARD_LENGTH * BOARD_LENGTH, 256)
         self.value_fc2 = nn.Linear(256, 1)
         self.value_dr1 = nn.Dropout()
         self.value_dr2 = nn.Dropout()
@@ -43,18 +44,23 @@ class Alpha(nn.Module):
 
         # Policy head forward pass
         x_policy = F.relu(self.policy_bn(self.policy_conv(x_conv)))
-        x_policy = x_policy.view(-1, 73 * 8 * 8)  # Flatten to [batch_size, 4672]
+        x_policy = x_policy.view(-1, POLICY_OUTPUT_SIZE)
         x_policy = F.log_softmax(x_policy, dim=1)  # Log-probabilities for NLLLoss
 
         # Value head forward pass
         x_value = F.relu(self.value_bn(self.value_conv(x_conv)))
-        x_value = x_value.view(-1, 8 * 8)  # Flatten spatial dimensions
+
+        # Flatten spatial dimensions
+        x_value = x_value.view(-1, BOARD_LENGTH * BOARD_LENGTH)
         x_value = F.relu(self.value_fc1(self.value_dr1(x_value)))
-        x_value = torch.tanh(
-            self.value_fc2(self.value_dr2(x_value))
-        )  # Output ∈ [-1, 1]
+
+        # Output ∈ [-1, 1]
+        x_value = torch.tanh(self.value_fc2(self.value_dr2(x_value)))
 
         return x_policy, x_value
+
+
+alpha_minus_one = Alpha()
 
 
 def main():
