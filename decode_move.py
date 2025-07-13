@@ -1,3 +1,7 @@
+import chess
+
+BOARD_LENGTH = 8
+
 QUEEN_MOVE_START = 0
 QUEEN_MOVE_END = 55
 KNIGHT_MOVE_START = 56
@@ -170,3 +174,111 @@ def decode_move(
         return to_rank, to_file, promotion_piece
     else:
         raise ValueError(f"Invalid move_layer: {move_layer}. Must be between 0 and 72.")
+
+
+def _encode_underpromotions(move_distance: int):
+    STRAIGHT = 16
+    DIAGONAL_LEFT = 15
+    DIAGONAL_RIGHT = 17
+
+    match move.promotion:
+        case chess.KNIGHT:
+            if move_distance == STRAIGHT:
+                return 64
+            if move_distance == DIAGONAL_LEFT:
+                return 65
+            if move_distance == DIAGONAL_RIGHT:
+                return 66
+        case chess.BISHOP:
+            if move_distance == STRAIGHT:
+                return 67
+            if move_distance == DIAGONAL_LEFT:
+                return 68
+            if move_distance == DIAGONAL_RIGHT:
+                return 69
+        case chess.ROOK:
+            if move_distance == STRAIGHT:
+                return 70
+            if move_distance == DIAGONAL_LEFT:
+                return 71
+            if move_distance == DIAGONAL_RIGHT:
+                return 72
+
+
+def _encode_knight_moves(rank_offset: int, file_offset: int):
+    L_SHAPES = [
+        (+2, +1),
+        (+2, -1),
+        (-2, +1),
+        (-2, -1),
+        (+1, +2),
+        (+1, -2),
+        (-1, +2),
+        (-1, -2),
+    ]
+
+    for i, l_rank, l_file in enumerate(L_SHAPES):
+        if rank_offset == l_rank and file_offset == l_file:
+            return 56 + i
+
+
+def _encode_queen_like_moves(rank_offset: int, file_offset: int):
+    QUEEN_DIRECTIONS = [
+        (1, 0),  # North
+        (1, 1),  # North-East
+        (0, 1),  # East
+        (-1, 1),  # South-East
+        (-1, 0),  # South
+        (-1, -1),  # South-West
+        (0, -1),  # West
+        (1, -1),  # North-West
+    ]
+
+    # Determine direction index
+    direction_idx = -1
+    # Normalize dr, df to get the direction vector (e.g., (1,0) for North)
+    norm_dr = 0 if rank_offset == 0 else rank_offset // abs(rank_offset)
+    norm_df = 0 if file_offset == 0 else file_offset // abs(file_offset)
+
+    for i, (dir_r, dir_f) in enumerate(QUEEN_DIRECTIONS):
+        if norm_dr == dir_r and norm_df == dir_f:
+            direction_idx = i
+            break
+
+    # Determine distance
+    # For straight moves (rank_offset=0 or file_offset=0), distance is abs(rank_offset) or abs(file_offset)
+    # For diagonal moves, distance is abs(rank_offset) (which is equal to abs(file_offset))
+    distance = max(abs(rank_offset), abs(file_offset))
+
+    # Queen-style layers are 0-55
+    # Layer = (direction_idx * MAX_QUEEN_DISTANCE) + (distance - 1)
+    # Example: Direction N (idx 0), distance 1 -> layer 0
+    #          Direction N (idx 0), distance 7 -> layer 6
+    #          Direction NE (idx 1), distance 1 -> layer 7
+    #          Direction NW (idx 7), distance 7 -> layer 7*7 + 6 = 55
+    return (direction_idx * MAX_QUEEN_DISTANCE) + (distance - 1)
+
+
+# Assumes move is legal
+def encode_move_layer(move: chess.Move, board: chess.Board) -> int:
+    if move.promotion is not None and move.promotion != chess.QUEEN:
+        move_distance = abs(move.to_square - move.from_square)
+        return _encode_underpromotions(move_distance)
+
+    from_rank = move.from_square // BOARD_LENGTH
+    from_file = move.from_square % BOARD_LENGTH
+
+    to_rank = move.to_square // BOARD_LENGTH
+    to_file = move.to_square % BOARD_LENGTH
+
+    rank_offset = to_rank - from_rank
+    file_offset = to_file - from_file
+
+    if (abs(rank_offset) == 1 and abs(file_offset) == 2) or (
+        abs(rank_offset) == 2 and abs(file_offset) == 1
+    ):
+        return _encode_knight_moves(rank_offset, file_offset)
+
+    # Straight or diagonal line
+    if rank_offset == 0 or file_offset == 0 or abs(rank_offset) == abs(file_offset):
+        return _encode_queen_like_moves(rank_offset, file_offset)
