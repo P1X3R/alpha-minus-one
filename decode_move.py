@@ -126,7 +126,7 @@ def _parse_underpromotion_move(
 
     # Promote to Knight (layers 0-2 relative to UNDERPROMOTION_MOVE_START)
     if relative_layer >= 0 and relative_layer <= 2:
-        promotion_piece = "N"  # Knight
+        promotion_piece = "n"  # Knight
         if relative_layer == 0:  # Straight promotion
             to_file = from_file
         elif relative_layer == 1:  # Diagonal-left promotion
@@ -136,7 +136,7 @@ def _parse_underpromotion_move(
 
     # Promote to Bishop (layers 3-5 relative)
     elif relative_layer >= 3 and relative_layer <= 5:
-        promotion_piece = "B"  # Bishop
+        promotion_piece = "b"  # Bishop
         if relative_layer == 3:  # Straight promotion
             to_file = from_file
         elif relative_layer == 4:  # Diagonal-left promotion
@@ -146,7 +146,7 @@ def _parse_underpromotion_move(
 
     # Promote to Rook (layers 6-8 relative)
     elif relative_layer >= 6 and relative_layer <= 8:
-        promotion_piece = "R"  # Rook
+        promotion_piece = "r"  # Rook
         if relative_layer == 6:  # Straight promotion
             to_file = from_file
         elif relative_layer == 7:  # Diagonal-left promotion
