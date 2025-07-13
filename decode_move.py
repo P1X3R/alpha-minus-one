@@ -16,46 +16,25 @@ def _parse_queen_style_move(
     to_file: int = from_file
     distance: int
 
-    # top (0-6)
-    if move_layer >= 0 and move_layer <= 6:
-        distance = (move_layer - 0) + 1
-        to_rank += distance
-    # top-right (7-13)
-    elif move_layer >= 7 and move_layer <= 13:
-        distance = (move_layer - 7) + 1
-        to_rank += distance
-        to_file += distance
-    # right (14-20)
-    elif move_layer >= 14 and move_layer <= 20:
-        distance = (move_layer - 14) + 1
-        to_file += distance
-    # bottom-right (21-27)
-    elif move_layer >= 21 and move_layer <= 27:
-        distance = (move_layer - 21) + 1
-        to_rank -= distance
-        to_file += distance
-    # bottom (28-34)
-    elif move_layer >= 28 and move_layer <= 34:
-        distance = (move_layer - 28) + 1
-        to_rank -= distance
-    # bottom-left (35-41)
-    elif move_layer >= 35 and move_layer <= 41:
-        distance = (move_layer - 35) + 1
-        to_rank -= distance
-        to_file -= distance
-    # left (42-48)
-    elif move_layer >= 42 and move_layer <= 48:
-        distance = (move_layer - 42) + 1
-        to_file -= distance
-    # top-left (49-55)
-    elif move_layer >= 49 and move_layer <= 55:
-        distance = (move_layer - 49) + 1
-        to_rank += distance
-        to_file -= distance
-    else:
-        # This case should ideally not be reached if called correctly
-        # for queen-style moves.
-        raise ValueError(f"Invalid move_layer for queen-style move: {move_layer}")
+    directions = [
+        (0, 6, 1, 0),  # top (dr=1, df=0)
+        (7, 13, 1, 1),  # top-right (dr=1, df=1)
+        (14, 20, 0, 1),  # right (dr=0, df=1)
+        (21, 27, -1, 1),  # bottom-right (dr=-1, df=1)
+        (28, 34, -1, 0),  # bottom (dr=-1, df=0)
+        (35, 41, -1, -1),  # bottom-left (dr=-1, df=-1)
+        (42, 48, 0, -1),  # left (dr=0, df=-1)
+        (49, 55, 1, -1),  # top-left (dr=1, df=-1)
+    ]
+
+    for start, end, direction_rank, direction_file in directions:
+        if move_layer >= start and move_layer <= end:
+            distance = (move_layer - start) + 1
+            to_rank = from_rank + distance * direction_rank
+            to_file = from_file + distance * direction_file
+            return to_rank, to_file
+
+    raise ValueError(f"Invalid move_layer for queen-style move: {move_layer}")
 
     return to_rank, to_file
 
