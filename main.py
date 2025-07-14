@@ -10,14 +10,21 @@ import numpy as np
 from decode_move import encode_move_layer
 
 BOARD_LENGTH = 8
-BOARD_VECTOR_DEPTH = 12
+BOARD_VECTOR_DEPTH = 13  # 6x2+1
 MOVES_PER_SQUARE = 73
 POLICY_OUTPUT_SIZE = BOARD_LENGTH * BOARD_LENGTH * MOVES_PER_SQUARE  # = 4672
+
+WIN = 1
+DRAW = 0
+LOSE = -1
 
 
 class Alpha(nn.Module):
     """
     AlphaZero-like neural network architecture for chess.
+
+    Input: A 13x8x8 tensor, 12 because there are 6 pieces in chess, and 2 colors. The 13th layer is for the turn, all 1 if whites, all 0 if black.
+    Output: AlphaZero move representation, can see decode_move's logic to understand more
 
     This network takes a board representation as input and outputs two heads:
     - A policy head: predicts a probability distribution over possible moves.
@@ -99,7 +106,8 @@ async def collect_game_data(
     engine_executable: str = "stockfish",
     opening_book_path: str = "book.bin",
     max_opening_moves: int = 12,
-) -> list[tuple[str, str]]:
+    color_learning: chess.Color = chess.WHITE,
+) -> list[tuple[str, str, int]]:
     """
     Makes a chess engine play against itself, collecting game data.
 
@@ -132,23 +140,30 @@ async def collect_game_data(
                     print(
                         f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(move)} (from book)"
                     )
-                    data.append((board.fen(), move.uci()))
+                    data.append((board.fen(), move.uci(), DRAW))
                     board.push(move)
                 except IndexError:  # If no moves found in book, use engine
                     result = await engine.play(board, chess.engine.Limit(time=0.1))
                     print(
                         f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(result.move)} (from Stockfish)"
                     )
-                    data.append((board.fen(), result.move.uci()))
+                    data.append((board.fen(), result.move.uci(), DRAW))
                     board.push(result.move)
             else:
                 result = await engine.play(board, chess.engine.Limit(time=0.1))
                 print(
                     f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(result.move)} (from Stockfish)"
                 )
-                data.append((board.fen(), result.move.uci()))
+                data.append((board.fen(), result.move.uci(), DRAW))
                 board.push(result.move)
             move_count += 1
+
+    winner = board.outcome().winner
+
+    if winner == color_learning:
+        data = [(position[0], position[1], WIN) for position in data]
+    elif winner is not None:
+        data = [(position[0], position[1], LOSE) for position in data]
 
     await engine.quit()
     return data
@@ -238,11 +253,7 @@ def generate_legality_mask(board: chess.Board) -> torch.Tensor:
 
 
 def main() -> None:
-    """
-    Main function to demonstrate data collection and FEN vectorization.
-    """
     print("Playing game:")
-    # This will run a game and then vectorize the FEN of the first position.
     print(vectorize_fen(asyncio.run(collect_game_data())[0][0]))
 
 
