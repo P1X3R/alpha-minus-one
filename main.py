@@ -16,7 +16,18 @@ POLICY_OUTPUT_SIZE = BOARD_LENGTH * BOARD_LENGTH * MOVES_PER_SQUARE  # = 4672
 
 
 class Alpha(nn.Module):
+    """
+    AlphaZero-like neural network architecture for chess.
+
+    This network takes a board representation as input and outputs two heads:
+    - A policy head: predicts a probability distribution over possible moves.
+    - A value head: estimates the winning probability for the current player.
+    """
+
     def __init__(self):
+        """
+        Initializes the Alpha model's layers.
+        """
         super(Alpha, self).__init__()
 
         # Shared convolutional body
@@ -43,8 +54,22 @@ class Alpha(nn.Module):
         self.value_dr2 = nn.Dropout()
 
     def forward(
-        self, legality_mask: torch.Tensor, x
+        self, legality_mask: torch.Tensor, x: torch.Tensor
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        """
+        Performs a forward pass through the network.
+
+        Args:
+            legality_mask (torch.Tensor): A tensor representing the legality of moves,
+                                          used to mask out illegal moves in the policy head.
+            x (torch.Tensor): The input tensor representing the chess board state.
+
+        Returns:
+            tuple[torch.Tensor, torch.Tensor]: A tuple containing:
+                - x_policy (torch.Tensor): The log-softmax probabilities for each move.
+                - x_value (torch.Tensor): The predicted value of the board position,
+                                          scaled to [-1, 1].
+        """
         # Shared convolutional body
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
@@ -70,12 +95,28 @@ class Alpha(nn.Module):
         return x_policy, x_value
 
 
-# Makes a chess engine play against itself, storing position (in FEN) and best move (in UCI algebraic notation)
 async def collect_game_data(
     engine_executable: str = "stockfish",
     opening_book_path: str = "book.bin",
     max_opening_moves: int = 12,
 ) -> list[tuple[str, str]]:
+    """
+    Makes a chess engine play against itself, collecting game data.
+
+    The game data consists of a list of tuples, where each tuple contains
+    the FEN (Forsyth-Edwards Notation) string of a position and the UCI
+    (Universal Chess Interface) algebraic notation of the best move played
+    from that position. The function uses an opening book for the initial
+    moves and then switches to the specified chess engine.
+
+    Args:
+        engine_executable (str): The path to the chess engine executable (e.g., "stockfish").
+        opening_book_path (str): The path to the Polyglot opening book file.
+        max_opening_moves (int): The maximum number of moves to play from the opening book.
+
+    Returns:
+        list[tuple[str, str]]: A list of (FEN, UCI move) tuples representing the game.
+    """
     data = []
     transport, engine = await chess.engine.popen_uci(engine_executable)
 
@@ -93,7 +134,7 @@ async def collect_game_data(
                     )
                     data.append((board.fen(), move.uci()))
                     board.push(move)
-                except IndexError:
+                except IndexError:  # If no moves found in book, use engine
                     result = await engine.play(board, chess.engine.Limit(time=0.1))
                     print(
                         f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(result.move)} (from Stockfish)"
@@ -113,8 +154,19 @@ async def collect_game_data(
     return data
 
 
-# Converts a FEN string into a 12x8x8 tensor (one-hot encoded board representation)
 def vectorize_fen(fen: str) -> torch.Tensor:
+    """
+    Converts a FEN (Forsyth-Edwards Notation) string into a 12x8x8 tensor
+    representing the chess board state. Each of the 12 channels corresponds
+    to a specific piece type (e.g., white pawns, black rooks).
+
+    Args:
+        fen (str): The FEN string of the chess board.
+
+    Returns:
+        torch.Tensor: A tensor of shape (12, 8, 8) representing the board,
+                      one-hot encoded for each piece type.
+    """
     result = np.zeros((BOARD_VECTOR_DEPTH, BOARD_LENGTH, BOARD_LENGTH))
     rank = BOARD_LENGTH - 1
     file = 0
@@ -160,6 +212,20 @@ def vectorize_fen(fen: str) -> torch.Tensor:
 
 
 def generate_legality_mask(board: chess.Board) -> torch.Tensor:
+    """
+    Generates a legality mask for the given chess board.
+
+    The mask is a tensor of shape (MOVES_PER_SQUARE, BOARD_LENGTH, BOARD_LENGTH),
+    where illegal moves are set to a very small negative number (-1e9) and legal
+    moves are set to 0.0. This mask can be added to the policy head output
+    to effectively zero out the probabilities of illegal moves after a softmax.
+
+    Args:
+        board (chess.Board): The current chess board state.
+
+    Returns:
+        torch.Tensor: A tensor representing the legality mask.
+    """
     mask = torch.full((MOVES_PER_SQUARE, BOARD_LENGTH, BOARD_LENGTH), -1e9)
 
     for move in board.legal_moves:
@@ -172,7 +238,11 @@ def generate_legality_mask(board: chess.Board) -> torch.Tensor:
 
 
 def main() -> None:
+    """
+    Main function to demonstrate data collection and FEN vectorization.
+    """
     print("Playing game:")
+    # This will run a game and then vectorize the FEN of the first position.
     print(vectorize_fen(asyncio.run(collect_game_data())[0][0]))
 
 
