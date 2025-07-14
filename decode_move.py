@@ -176,7 +176,7 @@ def decode_move(
         raise ValueError(f"Invalid move_layer: {move_layer}. Must be between 0 and 72.")
 
 
-def _encode_underpromotions(move_distance: int):
+def _encode_underpromotions(move_distance: int, move: chess.Move):
     STRAIGHT = 16
     DIAGONAL_LEFT = 15
     DIAGONAL_RIGHT = 17
@@ -233,6 +233,7 @@ def _encode_queen_like_moves(rank_offset: int, file_offset: int):
         (0, -1),  # West
         (1, -1),  # North-West
     ]
+    MAX_QUEEN_DISTANCE = 7
 
     # Determine direction index
     direction_idx = -1
@@ -260,10 +261,10 @@ def _encode_queen_like_moves(rank_offset: int, file_offset: int):
 
 
 # Assumes move is legal
-def encode_move_layer(move: chess.Move, board: chess.Board) -> int:
+def encode_move_layer(move: chess.Move) -> int:
     if move.promotion is not None and move.promotion != chess.QUEEN:
         move_distance = abs(move.to_square - move.from_square)
-        return _encode_underpromotions(move_distance)
+        return _encode_underpromotions(move_distance, move)
 
     from_rank = move.from_square // BOARD_LENGTH
     from_file = move.from_square % BOARD_LENGTH

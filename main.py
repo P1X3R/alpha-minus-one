@@ -6,6 +6,8 @@ import chess.engine
 import chess.polyglot
 import asyncio
 import random
+import numpy as np
+from decode_move import encode_move_layer
 
 BOARD_LENGTH = 8
 BOARD_VECTOR_DEPTH = 12
@@ -40,7 +42,9 @@ class Alpha(nn.Module):
         self.value_dr1 = nn.Dropout()
         self.value_dr2 = nn.Dropout()
 
-    def forward(self, x) -> tuple[torch.Tensor, torch.Tensor]:
+    def forward(
+        self, legality_mask: torch.Tensor, x
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         # Shared convolutional body
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
@@ -49,6 +53,7 @@ class Alpha(nn.Module):
 
         # Policy head forward pass
         x_policy = F.relu(self.policy_bn(self.policy_conv(x_conv)))
+        x_policy += legality_mask
         x_policy = x_policy.view(-1, POLICY_OUTPUT_SIZE)
         x_policy = F.log_softmax(x_policy, dim=1)  # Log-probabilities for NLLLoss
 
@@ -108,8 +113,9 @@ async def collect_game_data(
     return data
 
 
+# Converts a FEN string into a 12x8x8 tensor (one-hot encoded board representation)
 def vectorize_fen(fen: str) -> torch.Tensor:
-    result = np.zeros((12, 8, 8))
+    result = np.zeros((BOARD_VECTOR_DEPTH, BOARD_LENGTH, BOARD_LENGTH))
     rank = BOARD_LENGTH - 1
     file = 0
 
@@ -153,9 +159,21 @@ def vectorize_fen(fen: str) -> torch.Tensor:
     return torch.tensor(result)
 
 
+def generate_legality_mask(board: chess.Board) -> torch.Tensor:
+    mask = torch.full((MOVES_PER_SQUARE, BOARD_LENGTH, BOARD_LENGTH), -1e9)
+
+    for move in board.legal_moves:
+        from_rank = move.from_square // BOARD_LENGTH
+        from_file = move.from_square % BOARD_LENGTH
+
+        mask[encode_move_layer(move)][from_rank][from_file] = 0.0
+
+    return mask
+
+
 def main() -> None:
     print("Playing game:")
-    _ = asyncio.run(collect_game_data())
+    print(vectorize_fen(asyncio.run(collect_game_data())[0][0]))
 
 
 if __name__ == "__main__":
