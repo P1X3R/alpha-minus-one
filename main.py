@@ -4,16 +4,13 @@ import torch.nn.functional as F
 import chess
 import chess.engine
 import chess.polyglot
-from decode_move import encode_move_layer
+from generate_dataset import generate_dataset
+from move import encode_move_layer
 
 BOARD_LENGTH = 8
 BOARD_VECTOR_DEPTH = 13  # 6x2+1
 MOVES_PER_SQUARE = 73
 POLICY_OUTPUT_SIZE = BOARD_LENGTH * BOARD_LENGTH * MOVES_PER_SQUARE  # = 4672
-
-WIN = 1
-DRAW = 0
-LOSE = -1
 
 
 class Alpha(nn.Module):
@@ -125,9 +122,9 @@ def generate_legality_mask(board: chess.Board) -> torch.Tensor:
     return mask
 
 
-def main() -> None:
-    print("Hello world!")
+# def main() -> None:
+#     print("Hello world!")
 
 
 if __name__ == "__main__":
-    main()
+    generate_dataset()
