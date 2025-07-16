@@ -32,6 +32,7 @@ async def collect_game_data(
     opening_book_path: str = "book.bin",
     max_opening_moves: int = 12,
     color_learning: chess.Color = chess.WHITE,
+    threads: int = 1,
 ) -> list[tuple[str, chess.Move, int]]:
     """
     Makes a chess engine play against itself, collecting game data.
@@ -52,11 +53,12 @@ async def collect_game_data(
     """
     data = []
     transport, engine = await chess.engine.popen_uci(engine_executable)
+    await engine.configure({"Threads": threads})
 
     board = chess.Board()
     move_count = 0
 
-    ENGINE_TIME_LIMIT = 2
+    ENGINE_TIME_LIMIT = 0.5
 
     with chess.polyglot.open_reader(opening_book_path) as book:
         while not board.is_game_over():
