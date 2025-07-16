@@ -65,14 +65,14 @@ def _encode_knight_moves(rank_offset: int, file_offset: int):
 
 def _encode_queen_like_moves(rank_offset: int, file_offset: int):
     QUEEN_DIRECTIONS = [
-        (1, 0),  # North
-        (1, 1),  # North-East
-        (0, 1),  # East
-        (-1, 1),  # South-East
-        (-1, 0),  # South
+        (+1, +0),  # North
+        (+1, +1),  # North-East
+        (+0, +1),  # East
+        (-1, +1),  # South-East
+        (-1, +0),  # South
         (-1, -1),  # South-West
-        (0, -1),  # West
-        (1, -1),  # North-West
+        (+0, -1),  # West
+        (+1, -1),  # North-West
     ]
     MAX_QUEEN_DISTANCE = 7
 

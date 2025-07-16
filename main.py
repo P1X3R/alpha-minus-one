@@ -117,7 +117,7 @@ def generate_legality_mask(board: chess.Board) -> torch.Tensor:
         from_rank = move.from_square // BOARD_LENGTH
         from_file = move.from_square % BOARD_LENGTH
 
-        mask[encode_move_layer(move)][from_rank][from_file] = 0.0
+        mask[encode_move_layer(move), from_rank, from_file] = 0.0
 
     return mask
 
