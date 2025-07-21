@@ -11,10 +11,10 @@ BOARD_VECTOR_DEPTH = 12  # 6x2
 vectorized_game_dtype = [
     (
         "input_board",
-        (np.int32, (BOARD_VECTOR_DEPTH + 1, BOARD_LENGTH, BOARD_LENGTH)),
+        (np.int8, (BOARD_VECTOR_DEPTH + 1, BOARD_LENGTH, BOARD_LENGTH)),
     ),
     ("output_best_move_index", np.int32),
-    ("output_winner", np.int32),
+    ("output_winner", np.int8),
 ]
 
 
