@@ -23,7 +23,7 @@ async def collect_game_data(
     max_opening_moves: int = 12,
     color_learning: chess.Color = chess.WHITE,
     threads: int = 1,
-) -> list[tuple[str, chess.Move, int]]:
+) -> list[tuple[chess.Board, chess.Move, int]]:
     """
     Makes a chess engine play against itself, collecting game data.
 
@@ -59,7 +59,7 @@ async def collect_game_data(
                     print(
                         f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(move)} (from book)"
                     )
-                    data.append((board.fen(), move, DRAW))
+                    data.append((board, move, DRAW))
                     board.push(move)
                 except IndexError:  # If no moves found in book, use engine
                     result = await engine.play(
@@ -68,7 +68,7 @@ async def collect_game_data(
                     print(
                         f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(result.move)} (from Stockfish)"
                     )
-                    data.append((board.fen(), result.move, DRAW))
+                    data.append((board, result.move, DRAW))
                     board.push(result.move)
             else:
                 result = await engine.play(
@@ -77,7 +77,7 @@ async def collect_game_data(
                 print(
                     f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(result.move)} (from Stockfish)"
                 )
-                data.append((board.fen(), result.move, DRAW))
+                data.append((board, result.move, DRAW))
                 board.push(result.move)
             move_count += 1
 
