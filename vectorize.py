@@ -31,7 +31,7 @@ def vectorize_fen(fen: str) -> np.ndarray:
         np.ndarray: An integer tensor of shape (12, 8, 8) representing the board,
                       one-hot encoded for each piece type.
     """
-    result = np.zeros((BOARD_VECTOR_DEPTH, BOARD_LENGTH, BOARD_LENGTH), dtype=int)
+    result = np.zeros((BOARD_VECTOR_DEPTH, BOARD_LENGTH, BOARD_LENGTH), dtype=np.int32)
     rank = BOARD_LENGTH - 1
     file = 0
 
@@ -50,6 +50,21 @@ def vectorize_fen(fen: str) -> np.ndarray:
                 break
 
         file += 1
+
+    return result
+
+
+def vectorize_board_optimized(board: chess.Board) -> np.ndarray:
+    result = np.zeros(
+        (BOARD_VECTOR_DEPTH + 1, BOARD_LENGTH, BOARD_LENGTH), dtype=np.int8
+    )
+
+    for square, piece in board.piece_map().items():
+        index = piece.color * 6 + (piece.piece_type - 1)
+        result[index, chess.square_rank(square), chess.square_file(square)] = 1
+
+    # Set turn layer
+    result[12] = board.turn == chess.WHITE  # Boolean to int conversion
 
     return result
 

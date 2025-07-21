@@ -120,9 +120,6 @@ def generate_dataset():
                 playing_for,
             )
 
-            for position in game:
-                assert position[1] >= 0 and position[1] < 4672
-
             current_rows = dataset.shape[0]
             dataset.resize(current_rows + game.shape[0], axis=0)
 
