@@ -1,13 +1,21 @@
 import chess
+import numpy as np
 
 BOARD_LENGTH = 8
 
 UNDERPROMOTION_MOVE_START = 64
 
 
-def _encode_underpromotions(
-    rank_offset: int, file_offset: int, move: chess.Move, player_color: chess.Color
-) -> int:
+def _encode_underpromotions(move: chess.Move, player_color: chess.Color) -> int:
+    from_rank = chess.square_rank(move.from_square)
+    from_file = chess.square_file(move.from_square)
+
+    to_rank = chess.square_rank(move.to_square)
+    to_file = chess.square_file(move.to_square)
+
+    rank_offset = to_rank - from_rank
+    file_offset = to_file - from_file
+
     # Determine promotion direction relative to the pawn's movement
     # Assuming pawn always moves 1 rank forward for promotion
     if file_offset == 0:
@@ -101,25 +109,49 @@ def _encode_queen_like_moves(rank_offset: int, file_offset: int):
     return (direction_idx * MAX_QUEEN_DISTANCE) + (distance - 1)
 
 
+def _precomputate_non_underpromotion() -> np.ndarray:
+    result = np.full((64, 64), -1, dtype=np.int8)
+
+    for from_square in chess.SQUARES:
+        from_rank = chess.square_rank(from_square)
+        from_file = chess.square_file(from_square)
+
+        for to_square in chess.SQUARES:
+            if from_square == to_square:
+                continue
+
+            to_rank = chess.square_rank(to_square)
+            to_file = chess.square_file(to_square)
+
+            rank_offset = to_rank - from_rank
+            file_offset = to_file - from_file
+
+            if (abs(rank_offset) == 1 and abs(file_offset) == 2) or (
+                abs(rank_offset) == 2 and abs(file_offset) == 1
+            ):
+                result[from_square, to_square] = _encode_knight_moves(
+                    rank_offset, file_offset
+                )
+
+            # Straight or diagonal line
+            if (
+                rank_offset == 0
+                or file_offset == 0
+                or abs(rank_offset) == abs(file_offset)
+            ):
+                result[from_square, to_square] = _encode_queen_like_moves(
+                    rank_offset, file_offset
+                )
+
+    return result
+
+
+NON_UNDERPROMOTIONS = _precomputate_non_underpromotion()
+
+
 # Assumes move is legal
 def encode_move_layer(move: chess.Move, player_color: chess.Color) -> int:
-    from_rank = chess.square_rank(move.from_square)
-    from_file = chess.square_file(move.from_square)
-
-    to_rank = chess.square_rank(move.to_square)
-    to_file = chess.square_file(move.to_square)
-
-    rank_offset = to_rank - from_rank
-    file_offset = to_file - from_file
-
     if move.promotion is not None and move.promotion != chess.QUEEN:
-        return _encode_underpromotions(rank_offset, file_offset, move, player_color)
+        return _encode_underpromotions(move, player_color)
 
-    if (abs(rank_offset) == 1 and abs(file_offset) == 2) or (
-        abs(rank_offset) == 2 and abs(file_offset) == 1
-    ):
-        return _encode_knight_moves(rank_offset, file_offset)
-
-    # Straight or diagonal line
-    if rank_offset == 0 or file_offset == 0 or abs(rank_offset) == abs(file_offset):
-        return _encode_queen_like_moves(rank_offset, file_offset)
+    return NON_UNDERPROMOTIONS[move.from_square, move.to_square]
