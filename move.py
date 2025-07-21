@@ -103,11 +103,11 @@ def _encode_queen_like_moves(rank_offset: int, file_offset: int):
 
 # Assumes move is legal
 def encode_move_layer(move: chess.Move, player_color: chess.Color) -> int:
-    from_rank = move.from_square // BOARD_LENGTH
-    from_file = move.from_square % BOARD_LENGTH
+    from_rank = chess.square_rank(move.from_square)
+    from_file = chess.square_file(move.from_square)
 
-    to_rank = move.to_square // BOARD_LENGTH
-    to_file = move.to_square % BOARD_LENGTH
+    to_rank = chess.square_rank(move.to_square)
+    to_file = chess.square_file(move.to_square)
 
     rank_offset = to_rank - from_rank
     file_offset = to_file - from_file

@@ -57,9 +57,9 @@ def vectorize_game_data(
 
         result[i][0] = vectorized_board
 
-        move_from_rank = move.from_square // BOARD_LENGTH
-        move_from_file = move.from_square % BOARD_LENGTH
-        move_depth = encode_move_layer(move, chess.WHITE if i % 2 != 0 else chess.BLACK)
+        move_from_rank = chess.square_rank(move.from_square)
+        move_from_file = chess.square_file(move.from_square)
+        move_depth = encode_move_layer(move, board.turn)
 
         move_index = (
             move_depth * BOARD_LENGTH * BOARD_LENGTH
