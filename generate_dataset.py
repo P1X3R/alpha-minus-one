@@ -55,26 +55,17 @@ async def collect_game_data(
                 try:
                     entry = random.choice(list(book.find_all(board)))
                     move = entry.move
-                    print(
-                        f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(move)} (from book)"
-                    )
                     data.append((board, move, DRAW))
                     board.push(move)
                 except IndexError:  # If no moves found in book, use engine
                     result = await engine.play(
                         board, chess.engine.Limit(time=ENGINE_TIME_LIMIT)
                     )
-                    print(
-                        f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(result.move)} (from Stockfish)"
-                    )
                     data.append((board, result.move, DRAW))
                     board.push(result.move)
             else:
                 result = await engine.play(
                     board, chess.engine.Limit(time=ENGINE_TIME_LIMIT)
-                )
-                print(
-                    f"Game {len(data) // 2 + 1}, Move {move_count + 1}: {board.san(result.move)} (from Stockfish)"
                 )
                 data.append((board, result.move, DRAW))
                 board.push(result.move)
@@ -103,10 +94,10 @@ def generate_dataset():
             print("--- New game! ---")
             print("-----------------")
 
-            no_proccesed_data = (asyncio.run(collect_game_data()),)
+            no_proccesed_data = asyncio.run(collect_game_data())
 
             game = vectorize_game_data(
-                no_proccesed_data[0],
+                no_proccesed_data,
             )
 
             current_rows = dataset.shape[0]
