@@ -1,7 +1,9 @@
 import chess
 import chess.engine
 import chess.polyglot
+import chess.pgn
 import numpy as np
+from typing import TextIO, Iterator
 from move import encode_move_layer
 
 
@@ -69,3 +71,21 @@ def vectorize_game_data(
         vectorized["output_best_move_index"][i] = move_index
 
     return vectorized
+
+
+def generate_game_chunks(file_handler: TextIO, chunk_size: int) -> Iterator[np.ndarray]:
+    current_chunk = []
+
+    while True:
+        game = chess.pgn.read_game(file_handler)
+
+        if game is None:
+            if current_chunk:  # Yield any remaining games in the last chunk
+                yield np.array(current_chunk, dtype=object)
+            break
+
+        current_chunk.append(game)
+
+        if len(current_chunk) == chunk_size:
+            yield np.array(current_chunk, dtype=object)
+            current_chunk = []

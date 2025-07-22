@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import chess
 import chess.engine
 import chess.polyglot
-from generate_dataset import generate_dataset
+import chess.pgn
 from move import encode_move_layer
 
 BOARD_LENGTH = 8
@@ -114,10 +114,11 @@ def generate_legality_mask(board: chess.Board) -> torch.Tensor:
     mask = torch.full((MOVES_PER_SQUARE, BOARD_LENGTH, BOARD_LENGTH), -1e9)
 
     for move in board.legal_moves:
-        from_rank = move.from_square // BOARD_LENGTH
-        from_file = move.from_square % BOARD_LENGTH
-
-        mask[encode_move_layer(move), from_rank, from_file] = 0.0
+        mask[
+            encode_move_layer(move),
+            chess.square_rank(move.from_square),
+            chess.square_file(move.from_square),
+        ] = 0.0
 
     return mask
 
