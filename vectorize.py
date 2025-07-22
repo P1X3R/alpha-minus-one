@@ -5,6 +5,10 @@ import numpy as np
 from move import encode_move_layer
 
 
+WIN = 1
+DRAW = 0
+LOSE = -1
+
 BOARD_LENGTH = 8
 BOARD_VECTOR_DEPTH = 12  # 6x2
 
@@ -14,7 +18,7 @@ vectorized_game_dtype = [
         (np.int8, (BOARD_VECTOR_DEPTH + 1, BOARD_LENGTH, BOARD_LENGTH)),
     ),
     ("output_best_move_index", np.int32),
-    ("output_winner", np.int8),
+    ("output_win", np.int8),
 ]
 
 
@@ -33,29 +37,24 @@ def vectorize_board(board: chess.Board) -> np.ndarray:
     return result
 
 
+def get_win(result: str, turn: chess.Color) -> int:
+    match result:
+        case "1/2-1/2":
+            return DRAW
+        case "1-0":
+            return WIN if turn == chess.WHITE else LOSE
+        case "0-1":
+            return WIN if turn == chess.BLACK else LOSE
+
+
 def vectorize_game_data(
-    game_data: list[tuple[chess.Board, chess.Move, int]], playing_for_whites: bool
+    game_data: list[tuple[chess.Board, chess.Move, str]],
 ) -> np.ndarray:
-    result = np.zeros((len(game_data),), dtype=vectorized_game_dtype)
+    vectorized = np.zeros(len(game_data), dtype=vectorized_game_dtype)
 
-    for i, position in enumerate(game_data):
-        board: chess.Board = position[0]
-        move: chess.Move = position[1]
-        winner: int = position[2]
-
-        result[i][2] = winner
-
-        vectorized_board_from_fen = vectorize_board(board)
-        turn_layer = np.full(
-            (1, BOARD_LENGTH, BOARD_LENGTH),
-            1 if playing_for_whites else 0,
-            dtype=np.int32,
-        )
-        vectorized_board = np.concatenate(
-            (vectorized_board_from_fen, turn_layer), axis=0
-        )
-
-        result[i][0] = vectorized_board
+    for i, (board, move, outcome) in enumerate(game_data):
+        vectorized["output_win"][i] = get_win(outcome, board.turn)
+        vectorized["input_board"][i] = vectorize_board(board)
 
         move_from_rank = chess.square_rank(move.from_square)
         move_from_file = chess.square_file(move.from_square)
@@ -67,6 +66,6 @@ def vectorize_game_data(
             + move_from_file
         )
 
-        result[i][1] = move_index
+        vectorized["output_best_move_index"][i] = move_index
 
-    return result
+    return vectorized

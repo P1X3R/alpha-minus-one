@@ -110,7 +110,7 @@ def _encode_queen_like_moves(rank_offset: int, file_offset: int):
 
 
 def _precomputate_non_underpromotion() -> np.ndarray:
-    result = np.full((64, 64), -1, dtype=np.int8)
+    result = np.full((64, 64), -1, dtype=np.int16)
 
     for from_square in chess.SQUARES:
         from_rank = chess.square_rank(from_square)
@@ -132,6 +132,7 @@ def _precomputate_non_underpromotion() -> np.ndarray:
                 result[from_square, to_square] = _encode_knight_moves(
                     rank_offset, file_offset
                 )
+                continue
 
             # Straight or diagonal line
             if (

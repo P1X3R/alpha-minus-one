@@ -21,9 +21,8 @@ async def collect_game_data(
     engine_executable: str = "stockfish",
     opening_book_path: str = "book.bin",
     max_opening_moves: int = 12,
-    color_learning: chess.Color = chess.WHITE,
     threads: int = 1,
-) -> list[tuple[chess.Board, chess.Move, int]]:
+) -> list[tuple[chess.Board, chess.Move, str]]:
     """
     Makes a chess engine play against itself, collecting game data.
 
@@ -48,7 +47,7 @@ async def collect_game_data(
     board = chess.Board()
     move_count = 0
 
-    ENGINE_TIME_LIMIT = 0.5
+    ENGINE_TIME_LIMIT = 0.005
 
     with chess.polyglot.open_reader(opening_book_path) as book:
         while not board.is_game_over():
@@ -81,12 +80,7 @@ async def collect_game_data(
                 board.push(result.move)
             move_count += 1
 
-    winner = board.outcome().winner
-
-    if winner == color_learning:
-        data = [(position[0], position[1], WIN) for position in data]
-    elif winner is not None:
-        data = [(position[0], position[1], LOSE) for position in data]
+    data = [(position[0], position[1], board.result()) for position in data]
 
     await engine.quit()
     return data
@@ -109,15 +103,10 @@ def generate_dataset():
             print("--- New game! ---")
             print("-----------------")
 
-            playing_for = random.choice([True, False])
-
-            no_proccesed_data = (
-                asyncio.run(collect_game_data(color_learning=playing_for)),
-            )
+            no_proccesed_data = (asyncio.run(collect_game_data()),)
 
             game = vectorize_game_data(
                 no_proccesed_data[0],
-                playing_for,
             )
 
             current_rows = dataset.shape[0]
