@@ -5,7 +5,6 @@ import chess
 import chess.engine
 import chess.polyglot
 import chess.pgn
-from generate_dataset import generate_dataset
 from move import encode_move_layer
 
 BOARD_LENGTH = 8
@@ -124,9 +123,9 @@ def generate_legality_mask(board: chess.Board) -> torch.Tensor:
     return mask
 
 
-# def main() -> None:
-#     print("Hello world!")
+def main() -> None:
+    print("Hello world!")
 
 
 if __name__ == "__main__":
-    generate_dataset()
+    main()
