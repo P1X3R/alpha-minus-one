@@ -19,7 +19,7 @@ vectorized_game_dtype = [
         "input_board",
         (np.int8, (BOARD_VECTOR_DEPTH + 1, BOARD_LENGTH, BOARD_LENGTH)),
     ),
-    ("output_best_move_index", np.int32),
+    ("output_best_move_index", np.int16),
     ("output_win", np.int8),
 ]
 
@@ -73,19 +73,21 @@ def vectorize_game_data(
     return vectorized
 
 
-def generate_game_chunks(file_handler: TextIO, chunk_size: int) -> Iterator[np.ndarray]:
+def generate_game_chunks(
+    file_handler: TextIO, chunk_size: int
+) -> Iterator[list[chess.pgn.Game]]:
     current_chunk = []
 
     while True:
         game = chess.pgn.read_game(file_handler)
 
-        if game is None:
-            if current_chunk:  # Yield any remaining games in the last chunk
-                yield np.array(current_chunk, dtype=object)
+        # Yield any remaining games in the last chunk
+        if game is None and current_chunk:
+            yield current_chunk
             break
 
         current_chunk.append(game)
 
         if len(current_chunk) == chunk_size:
-            yield np.array(current_chunk, dtype=object)
+            yield current_chunk
             current_chunk = []

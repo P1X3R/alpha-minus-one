@@ -5,6 +5,7 @@ import chess
 import chess.engine
 import chess.polyglot
 import chess.pgn
+from generate_dataset import generate_dataset
 from move import encode_move_layer
 
 BOARD_LENGTH = 8
