@@ -49,16 +49,21 @@ def get_win(result: str, turn: chess.Color) -> int:
             return WIN if turn == chess.BLACK else LOSE
 
 
-def vectorize_game_chunk(
-    chunk: list[chess.pgn.Game],
+def vectorize_game(
+    game: chess.pgn.Game,
 ) -> np.ndarray:
-    vectorized = np.zeros(len(chunk), dtype=vectorized_game_dtype)
+    mainline = list(game.mainline())
+    mainline.pop(0)
 
-    for i, game in enumerate(chunk):
-        board = game.board()
-        move = game.move
+    vectorized = np.zeros(len(mainline), dtype=vectorized_game_dtype)
 
-        vectorized["output_win"][i] = get_win(game.headers.get("Result"), board.turn)
+    for i, position in enumerate(mainline):
+        board = position.board()
+        move = position.move
+
+        vectorized["output_win"][i] = get_win(
+            position.headers.get("Result"), board.turn
+        )
         vectorized["input_board"][i] = vectorize_board(board)
 
         move_from_rank = chess.square_rank(move.from_square)
@@ -88,6 +93,8 @@ def generate_game_chunks(
         if game is None and current_chunk:
             yield current_chunk
             break
+        if game.headers.get("Result") == "*":
+            continue
 
         current_chunk.append(game)
 
