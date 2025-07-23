@@ -6,6 +6,7 @@ import chess.engine
 import chess.polyglot
 import chess.pgn
 from move import encode_move_layer
+from vectorize import vectorize_dataset
 
 BOARD_LENGTH = 8
 BOARD_VECTOR_DEPTH = 13  # 6x2+1
@@ -123,9 +124,24 @@ def generate_legality_mask(board: chess.Board) -> torch.Tensor:
     return mask
 
 
-def main() -> None:
-    print("Hello world!")
+# def main() -> None:
+#     print("Hello world!")
 
 
 if __name__ == "__main__":
-    main()
+    vectorize_dataset(
+        [
+            "dataset/dataset_part_1.pgn",
+            "dataset/dataset_part_2.pgn",
+            "dataset/dataset_part_3.pgn",
+            "dataset/dataset_part_4.pgn",
+        ],
+        [
+            "vectorized_dataset/vectorized_part_1.hdf5",
+            "vectorized_dataset/vectorized_part_2.hdf5",
+            "vectorized_dataset/vectorized_part_3.hdf5",
+            "vectorized_dataset/vectorized_part_4.hdf5",
+        ],
+        100,
+        50,
+    )

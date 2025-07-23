@@ -3,8 +3,11 @@ import chess.engine
 import chess.polyglot
 import chess.pgn
 import numpy as np
+import h5py
+from itertools import batched
 from typing import TextIO, Iterator
 from move import encode_move_layer
+from multiprocessing import Pool
 
 
 WIN = 1
@@ -14,7 +17,7 @@ LOSE = -1
 BOARD_LENGTH = 8
 BOARD_VECTOR_DEPTH = 12  # 6x2
 
-vectorized_game_dtype = [
+vectorized_position_dtype = [
     (
         "input_board",
         (np.int8, (BOARD_VECTOR_DEPTH + 1, BOARD_LENGTH, BOARD_LENGTH)),
@@ -55,15 +58,14 @@ def vectorize_game(
     mainline = list(game.mainline())
     mainline.pop(0)
 
-    vectorized = np.zeros(len(mainline), dtype=vectorized_game_dtype)
+    vectorized = np.zeros(len(mainline), dtype=vectorized_position_dtype)
+    game_result = game.headers.get("Result")
 
     for i, position in enumerate(mainline):
         board = position.board()
         move = position.move
 
-        vectorized["output_win"][i] = get_win(
-            position.headers.get("Result"), board.turn
-        )
+        vectorized["output_win"][i] = get_win(game_result, board.turn)
         vectorized["input_board"][i] = vectorize_board(board)
 
         move_from_rank = chess.square_rank(move.from_square)
@@ -81,7 +83,7 @@ def vectorize_game(
     return vectorized
 
 
-def generate_game_chunks(
+def read_game_chunks(
     file_handler: TextIO, chunk_size: int
 ) -> Iterator[list[chess.pgn.Game]]:
     current_chunk = []
@@ -101,3 +103,53 @@ def generate_game_chunks(
         if len(current_chunk) == chunk_size:
             yield current_chunk
             current_chunk = []
+
+
+def vectorize_dataset_part(
+    dataset_path: str,
+    output_vectorized_path: str,
+    pgn_chunk_size: int,
+    vectorization_chunk_size: int,
+):
+    if vectorization_chunk_size > pgn_chunk_size:
+        vectorization_chunk_size = pgn_chunk_size
+
+    with open(dataset_path, "r") as input_file:
+        with h5py.File(output_vectorized_path, "w") as output:
+            dataset = output.create_dataset(
+                "games",
+                shape=(0,),
+                maxshape=(None,),
+                compression="lzf",
+                shuffle=True,
+                chunks=True,
+                dtype=vectorized_position_dtype,
+            )
+
+            for chunk in read_game_chunks(input_file, pgn_chunk_size):
+                for slize in batched(chunk, vectorization_chunk_size):
+                    vectorized: np.ndarray = np.concatenate(
+                        list(map(vectorize_game, slize))
+                    )
+
+                    # Append new vectorized data
+                    current_size = dataset.shape[0]
+                    dataset.resize(current_size + len(vectorized), axis=0)
+                    dataset[current_size:] = vectorized
+
+
+def vectorize_dataset(
+    dataset_paths: list[str],
+    output_vectorized_path: list[str],
+    pgn_chunk_size: int,
+    vectorization_chunk_size: int,
+):
+    with Pool() as pool:
+        args = zip(
+            dataset_paths,
+            output_vectorized_path,
+            [pgn_chunk_size] * len(dataset_paths),
+            [vectorization_chunk_size] * len(dataset_paths),
+        )
+
+        pool.starmap(vectorize_dataset_part, args)

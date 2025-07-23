@@ -11,3 +11,5 @@ wheels/
 
 dataset.pgn
 book.bin
+dataset
+vectorized_dataset/*
